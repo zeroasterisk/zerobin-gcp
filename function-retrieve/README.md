@@ -1,0 +1,1 @@
+# Zerobin GCP Function: Retrieve

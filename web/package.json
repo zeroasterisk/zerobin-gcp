@@ -1,0 +1,33 @@
+{
+  "name": "zerobin-gcp-web",
+  "description": "A web ui for zerobin-gcp",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "x-start": "http-server",
+    "x-prestart": "npm run build",
+    "x-build": "browserify index.js -t babelify -o dist.js",
+    "lint": "eslint . --fix",
+    "start": "beefy index.js:dist.js 8080 -- -t babelify"
+  },
+  "devDependencies": {
+    "babel-core": "^6.26.0",
+    "babel-plugin-transform-async-to-generator": "^6.24.1",
+    "babel-plugin-transform-runtime": "^6.23.0",
+    "babel-preset-env": "^1.6.1",
+    "babel-preset-import-export": "^1.0.2",
+    "babelify": "^8.0.0",
+    "beefy": "^2.1.8",
+    "browserify": "^16.1.1",
+    "eslint": "^4.19.1",
+    "eslint-config-airbnb-base": "^13.0.0",
+    "eslint-plugin-import": "^2.13.0",
+    "http-server": "^0.11.1",
+    "watchify": "^3.11.0"
+  },
+  "browserslist": [
+    "last 2 versions",
+    "> 1%",
+    "not dead"
+  ]
+}
