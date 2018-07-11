@@ -18,7 +18,11 @@ This is a functional clone of http://sebsauvage.net/paste/
 - [ ] build basic GCP Function code to store data
 - [ ] build basic GCP Function code to retrieve data
 - [ ] flesh out client code to provide basic functionality
-- [ ] flesh out client to make pretty
+- [ ] implement material design / make pretty
+- [ ] refactor to PWA / make it fast
+ - https://mithril.js.org/
+ - https://github.com/developit/preact-cli/
+ - https://github.com/paulhoughton/preact-pwa
 
 
 
