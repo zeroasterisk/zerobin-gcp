@@ -5,21 +5,48 @@
   <body>
     <h1>Zerobin GCP</h1>
     <div id="main" class="container">
+      <h1 id="error" style="color: red; margin: 10px; display: none;">Error :(</div>
+      <div id="status" style="font-weight: bold; margin: 10px;"></div>
       <div id="load">
         Loading...
       </div>
       <div id="write" style="display:none;">
-        <form id="write-form" action="javascript:void(null)">
-          <textarea id="write-ta">
-            Lorem Ipsum
-          </textarea>
-          <button id="write-btn" type="submit">Secure it</button>
-        </form>
+        <div id="writing">
+          <h3>Paste Text</h3>
+          <form id="write-form" action="javascript:void(null)">
+            <p>TODO: TTL, Burn After Reading, Styling...</p>
+            <textarea id="write-plaintext">Lorem Ipsum</textarea>
+            <button type="submit">Secure it</button>
+          </form>
+        </div>
+        <div id="sending" style="display:none;">
+          <h3>Send only Ciphertext</h3>
+          <form id="send-form" action="javascript:void(null)">
+            <textarea id="write-ciphertext"></textarea>
+            <button type="submit">Send it</button>
+          </form>
+          <h6>Psst... we are not sending the Key</h6>
+          <input id="write-key" readOnly disabled />
+        </div>
+        <div id="sent" style="display:none;">
+          <h3>Saved <small>(debugging interum step)</small></h3>
+          <input id="write-url" readOnly disabled />
+          <a id="write-url-link" href="#">go</a>
+        </div>
       </div>
       <div id="read" style="display:none;">
-        <textarea id="read-ta">
-          ...
-        </textarea>
+        <div id="reading" style="display:none;">
+          <h3>Secure Data</h3>
+          <form id="read-form" action="javascript:void(null)">
+            <textarea id="read-ciphertext" readOnly disabled></textarea>
+            <input id="read-key" />
+            <button type="submit">Decrypt it</button>
+          </form>
+        </div>
+        <div id="done" style="display:none;">
+          <h3>Data</h3>
+          <textarea id="read-plaintext" readOnly disabled></textarea>
+        </div>
       </div>
     </div>
   </body>
