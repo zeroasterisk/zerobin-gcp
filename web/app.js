@@ -17,12 +17,15 @@ export default class App {
     this.setMsgNew(null);
   }
 
-  setMsgNew(plaintext) {
+  setMsgNew() {
     this.msg = {
       id: null, // get from URL, or create
       key: null, // get from URL, or create
-      plaintext,
+      plaintext: null,
       ciphertext: null,
+      ttl: null,
+      burn: null,
+      debug: null,
     };
   }
 
@@ -31,17 +34,24 @@ export default class App {
   }
 
   getUrl() {
+    // if (this.msg.id && this.msg.key) {
+    //   return `https://${this.domain}/#${this.msg.id}|${this.msg.key}`;
+    // }
+    // if (this.msg.id) {
+    //   return `https://${this.domain}/#${this.msg.id}`;
+    // }
     if (this.msg.id && this.msg.key) {
-      return `https://${this.domain}/${this.msg.id}#${this.msg.key}`;
+      return `#${this.msg.id}|${this.msg.key}`;
     }
     if (this.msg.id) {
-      return `https://${this.domain}/${this.msg.id}#ENCRYPTED`;
+      return `#${this.msg.id}`;
     }
     return null;
   }
 
-  async encryptMsg(plaintext) {
-    this.setMsgNew(plaintext);
+  async encryptMsg(msg) {
+    this.setMsgNew();
+    this.setMsg(msg);
     this.setMsg(await msgWrite(this.msg.plaintext));
     return true;
   }
@@ -51,19 +61,15 @@ export default class App {
   }
 
   loadFromUrl() {
-    const id = window.location.pathname.replace(/^\//, '');
-    const key = window.location.hash.replace(/^#/, 'xyz');
+    const hash = window.location.hash.replace(/^#/, 'xyz');
+    const parts = hash.split('|');
+    const id = parts[0];
+    const key = (parts.length > 1) ? parts[1] : null;
     if (id && key) {
       this.setMsg({ id, key });
     } else if (id) {
       this.setMsg({ id });
     }
-  }
-
-  determineMode() {
-    if (this.msg.plaintext) return 'decrypted';
-    if (this.msg.id) return 'downloadable';
-    return 'write';
   }
 
   async sendNewMsg() {
@@ -73,7 +79,10 @@ export default class App {
   }
 
   verifyMsgHasOnly(fields) {
+    const fieldsFalseable = ['burn', 'debug'];
     Object.keys(this.msg).forEach((field) => {
+      // omit checkboxes (can be false)
+      if (fieldsFalseable.indexOf(field)) return;
       // other field, has value = error
       if (fields.indexOf(field) === -1 && this.msg[field]) {
         throw new Error(`Msg should not have a value for "${field}" right now`);

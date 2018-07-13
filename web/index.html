@@ -1,53 +1,170 @@
 <html>
   <head>
+    <link rel="stylesheet" type="text/css" href="/material.min.css" />
+    <link rel="stylesheet" type="text/css" href="/material.blue_grey-amber.min.css" />
+    <script src="/material.min.js"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <style>
+      .demo-layout-transparent .mdl-layout__header {
+        background: url('/1024-blackhole.jpg') center / cover;
+      }
+    </style>
     <script src="dist.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
   </head>
   <body>
-    <h1>Zerobin GCP</h1>
-    <div id="main" class="container">
-      <h1 id="error" style="color: red; margin: 10px; display: none;">Error :(</div>
-      <div id="status" style="font-weight: bold; margin: 10px;"></div>
-      <div id="load">
-        Loading...
+    <div class="demo-layout-transparent mdl-layout mdl-js-layout mdl-layout--fixed-header">
+      <!-- HEADER -->
+      <header class="mdl-layout__header mdl-layout__header--transparent">
+        <div class="mdl-layout__header-row">
+          <!-- Title -->
+          <span class="mdl-layout-title">ZeroBin GCP</span>
+          <!-- Add spacer, to align navigation to the right -->
+          <div class="mdl-layout-spacer"></div>
+          <!-- Navigation -->
+          <nav class="mdl-navigation">
+            <a class="mdl-navigation__link" href="#new">New Paste</a>
+            <a class="mdl-navigation__link" href="#about">About</a>
+          </nav>
+        </div>
+      </header>
+      <div class="mdl-layout__drawer">
+        <span class="mdl-layout-title">ZeroBin GCP</span>
+        <nav class="mdl-navigation">
+            <a class="mdl-navigation__link" href="#new">New Paste</a>
+            <a class="mdl-navigation__link" href="#about">About</a>
+        </nav>
       </div>
-      <div id="write" style="display:none;">
-        <div id="writing">
-          <h3>Paste Text</h3>
-          <form id="write-form" action="javascript:void(null)">
-            <p>TODO: TTL, Burn After Reading, Styling...</p>
-            <textarea id="write-plaintext">Lorem Ipsum</textarea>
-            <button type="submit">Secure it</button>
-          </form>
+      <!-- MAIN BODY -->
+      <main id="main" class="mdl-layout__content">
+        <div class="page-content">
+          <!-- COMMON BODY TOP -->
+          <h1 id="error" style="color: red; margin: 10px; display: none;">Error :(</h1>
+          <div id="status" style="font-weight: bold; margin: 10px;"></div>
+          <div id="load">
+            <div id="p2" class="mdl-progress mdl-js-progress mdl-progress__indeterminate"></div>
+          </div>
+          <!-- WRITE BODY -->
+          <div id="write" class="mdl-grid">
+
+            <div class="mdl-tabs mdl-js-tabs mdl-js-ripple-effect">
+              <div id="write-tabs" class="mdl-tabs__tab-bar">
+                <a id="tab-write" href="#writing-panel" class="mdl-tabs__tab is-active">Paste</a>
+                <a id="tab-encrypt" href="#encrypted-panel" class="mdl-tabs__tab">Encrypt</a>
+                <a id="tab-send" href="#sent-panel" class="mdl-tabs__tab">Send</a>
+              </div>
+              <div class="mdl-tabs__panel is-active" id="writing-panel">
+                <div id="writing">
+                  <form id="write-form" action="javascript:void(null)">
+                    <div>
+                      <!-- possible improvement: https://github.com/CreativeIT/getmdl-select -->
+                      <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                        <select class="mdl-textfield__input" id="write-ttl">
+                          <option value="1">1 Day</option>
+                          <option value="2" selected>2 Days</option>
+                          <option value="3">3 Days</option>
+                          <option value="7">1 Week</option>
+                          <option value="14">2 Weeks</option>
+                          <option value="30">1 Month</option>
+                          <option value="61">2 Months</option>
+                          <option value="92">3 Months</option>
+                        </select>
+                        <label class="mdl-textfield__label" for="write-ttl">TTL</label>
+                      </div>
+                      <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect" for="write-burn">
+                        <input type="checkbox" id="write-burn" class="mdl-checkbox__input">
+                        <span class="mdl-checkbox__label">Burn after Read</span>
+                      </label>
+                      <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect" for="write-debug">
+                        <input type="checkbox" id="write-debug" class="mdl-checkbox__input">
+                        <span class="mdl-checkbox__label">Debug</span>
+                      </label>
+                    </div>
+                    <div class="mdl-textfield mdl-js-textfield">
+                      <textarea class="mdl-textfield__input" type="text" rows="3" id="write-plaintext" ></textarea>
+                      <label class="mdl-textfield__label" for="sample5">Paste your text...</label>
+                    </div>
+                    <br>
+                    <button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent" type="submit">Secure it</button>
+                  </form>
+                </div>
+              </div>
+              <div class="mdl-tabs__panel" id="encrypted-panel">
+                <div id="sending" style="display: none;">
+                  <p>The content has been encrypted, nothing sent to the server yet</p>
+                  <form id="send-form" action="javascript:void(null)">
+                    <div class="mdl-textfield mdl-js-textfield">
+                      <textarea class="mdl-textfield__input" type="text" rows="3"
+                        id="write-ciphertext" readOnly disabled></textarea>
+                      <!--<label class="mdl-textfield__label" for="sample5">Encrypted ciphertext...</label>-->
+                    </div>
+                    <br>
+                    <button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect
+                      mdl-button--accent" type="submit">Send encrypted content</button>
+                  </form>
+                  <h6>Psst... we are not sending the Key</h6>
+                  <div class="mdl-textfield mdl-js-textfield">
+                    <input class="mdl-textfield__input" type="text" id="write-key" readOnly disabled>
+                    <label class="mdl-textfield__label" for="sample1">Decryption Key</label>
+                  </div>
+                </div>
+              </div>
+              <div class="mdl-tabs__panel" id="sent-panel">
+                <div id="sent" style="display: none;">
+                  <p>The server has Saved the encrypted content</p>
+                  <p>Only you have the key (below)</p>
+                  <div class="mdl-textfield mdl-js-textfield">
+                    <input class="mdl-textfield__input" type="text" id="write-url" readOnly disabled>
+                    <label class="mdl-textfield__label" for="sample1">URL</label>
+                  </div>
+                  <br>
+                  <a
+                    id="write-url-link"
+                    href="#"
+                    class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent"
+                  >Preview it...</a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- READ BODY -->
+          <div id="read" style="display:none;">
+            <div class="mdl-tabs mdl-js-tabs mdl-js-ripple-effect">
+              <div id="read-tabs" class="mdl-tabs__tab-bar">
+                <a id="tab-download" href="#download-panel" class="mdl-tabs__tab is-active">Download</a>
+                <a id="tab-decrypt" href="#decrypt-panel" class="mdl-tabs__tab">Decrypt</a>
+              </div>
+              <div class="mdl-tabs__panel is-active" id="download-panel">
+                <div id="reading">
+                  <form id="read-form" action="javascript:void(null)">
+                    <div class="mdl-textfield mdl-js-textfield">
+                      <textarea class="mdl-textfield__input" type="text" rows="3"
+                        id="read-ciphertext" readOnly disabled></textarea>
+                      <label class="mdl-textfield__label" for="sample5">Encrypted ciphertext...</label>
+                    </div>
+                    <div class="mdl-textfield mdl-js-textfield">
+                      <input class="mdl-textfield__input" type="text" id="read-key" readOnly disabled>
+                      <label class="mdl-textfield__label" for="sample1">Decryption Key</label>
+                    </div>
+                    <br>
+                    <button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent" type="submit">Decrypt it</button>
+                  </form>
+                </div>
+              </div>
+              <div class="mdl-tabs__panel" id="decrypt-panel">
+                <div id="done">
+                  <div class="mdl-textfield mdl-js-textfield">
+                    <textarea class="mdl-textfield__input" type="text" rows="3"
+                      id="read-plaintext" readOnly></textarea>
+                    <label class="mdl-textfield__label" for="sample5">Decrypted text...</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div id="sending" style="display:none;">
-          <h3>Send only Ciphertext</h3>
-          <form id="send-form" action="javascript:void(null)">
-            <textarea id="write-ciphertext"></textarea>
-            <button type="submit">Send it</button>
-          </form>
-          <h6>Psst... we are not sending the Key</h6>
-          <input id="write-key" readOnly disabled />
-        </div>
-        <div id="sent" style="display:none;">
-          <h3>Saved <small>(debugging interum step)</small></h3>
-          <input id="write-url" readOnly disabled />
-          <a id="write-url-link" href="#">go</a>
-        </div>
-      </div>
-      <div id="read" style="display:none;">
-        <div id="reading" style="display:none;">
-          <h3>Secure Data</h3>
-          <form id="read-form" action="javascript:void(null)">
-            <textarea id="read-ciphertext" readOnly disabled></textarea>
-            <input id="read-key" />
-            <button type="submit">Decrypt it</button>
-          </form>
-        </div>
-        <div id="done" style="display:none;">
-          <h3>Data</h3>
-          <textarea id="read-plaintext" readOnly disabled></textarea>
-        </div>
-      </div>
-    </div>
+      </main>
+
+    </div><!--/layout-->
   </body>
 </html>

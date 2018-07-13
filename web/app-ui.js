@@ -38,10 +38,16 @@ export default class AppUi {
       load: document.querySelector('#load'),
       // write
       write: document.querySelector('#write'),
+      tab_write: document.querySelector('#tab-write'),
+      tab_encrypt: document.querySelector('#tab-encrypt'),
+      tab_send: document.querySelector('#tab-send'),
       // write before encrypt
       writing: document.querySelector('#writing'),
       write_form: document.querySelector('#write-form'),
       write_plaintext: document.querySelector('#write-plaintext'),
+      write_ttl: document.querySelector('#write-ttl'),
+      write_burn: document.querySelector('#write-burn'),
+      write_debug: document.querySelector('#write-debug'),
       // write before submit
       sending: document.querySelector('#sending'),
       send_form: document.querySelector('#send-form'),
@@ -53,6 +59,8 @@ export default class AppUi {
       write_url_link: document.querySelector('#write-url-link'),
       // read
       read: document.querySelector('#read'),
+      tab_download: document.querySelector('#tab-download'),
+      tab_decrypt: document.querySelector('#tab-decrypt'),
       // read before decrypt
       read_form: document.querySelector('#read-form'),
       read_key: document.querySelector('#read-key'),
@@ -62,43 +70,162 @@ export default class AppUi {
     };
     this.verifyDoms();
     // setup event listeners
-    this.doms.write_form.addEventListener('submit', async (event) => {
-      try {
-        event.stopPropagation();
-        this.setMode('encrypting');
-        this.setStatus('encrypting plaintext');
-        await this.app.encryptMsg(this.doms.write_plaintext.value);
-        this.app.verifyMsgHasOnly(['plaintext', 'key', 'ciphertext']);
-        this.setMsgUi();
-        // TODO allow auto?
-        // wait for user interaction for next step
-      } catch (err) {
-        console.error(err);
-        this.setMode('error');
-        this.setStatus(err.message);
-      }
-    });
-    this.doms.send_form.addEventListener('submit', async (event) => {
-      try {
-        event.stopPropagation();
-        this.app.verifyMsgHasOnly(['plaintext', 'key', 'ciphertext']);
-        this.setMsgUi();
-        this.setMode('sending');
-        this.setStatus('sending ciphertext');
-        await this.app.sendNewMsg();
-        this.app.verifyMsgHasOnly(['plaintext', 'key', 'ciphertext', 'id']);
-        this.setMsgUi();
-        // TODO wait for user interaction for next step?
-        this.setMode('sent');
-        this.setStatus('sent ciphertext');
-        // wait for user interaction for next step
-      } catch (err) {
-        console.error(err);
-        this.setMode('error');
-        this.setStatus(err.message);
-      }
-    });
+    window.addEventListener("hashchange", this.onHashChange.bind(this), false);
+    this.doms.write_form.addEventListener('submit', this.onWriteForm.bind(this));
+    this.doms.send_form.addEventListener('submit', this.onSendForm.bind(this));
   }
+
+  initialize() {
+    this.app.loadFromUrl();
+    setTimeout(this.onHashChange.bind(this), 30);
+  }
+
+  onHashChange() {
+    try {
+      const hash = window.location.hash;
+      console.log('onhashchange', hash);
+      if (!hash || hash === '#' || hash === '#new') return this.onReset();
+      if (hash === '#about') return this.onAbout();
+      // writing
+      if (hash === '#writing-panel'
+        || hash === '#encrypt-panel'
+        || hash === '#sent-panel') return null;
+      // reading
+      // if (hash === '#download-panel'
+      //   || hash === '#decrypt-panel') return null;
+      return this.onStartRead();
+    } catch (err) {
+      console.error(err);
+      this.setMode('error');
+      this.setStatus(err.message);
+    }
+  }
+
+  onReset(event) {
+    try {
+      if (event) event.stopPropagation();
+      this.setMode('write');
+      this.setStatus('enter your plaintext');
+      this.app.setMsgNew();
+      this.app.verifyMsgHasOnly([]);
+      this.setMsgUi();
+    } catch (err) {
+      console.error(err);
+      this.setMode('error');
+      this.setStatus(err.message);
+    }
+  }
+
+  async onWriteForm(event) {
+    try {
+      if (event) event.stopPropagation();
+      this.setMode('encrypting');
+      this.setStatus('encrypting plaintext');
+      await this.app.encryptMsg({
+        plaintext: this.doms.write_plaintext.value,
+        ttl: this.doms.write_ttl.value,
+        burn: this.doms.write_burn.checked,
+        debug: this.doms.write_debug.checked,
+      });
+      this.app.verifyMsgHasOnly(['plaintext', 'key', 'ciphertext', 'ttl']);
+      this.setMsgUi();
+      if (!this.app.msg.debug) {
+        this.onSendForm();
+      }
+    } catch (err) {
+      console.error(err);
+      this.setMode('error');
+      this.setStatus(err.message);
+    }
+  }
+
+  async onSendForm(event) {
+    try {
+      if (event) event.stopPropagation();
+      this.app.verifyMsgHasOnly(['plaintext', 'key', 'ciphertext', 'ttl']);
+      this.setMsgUi();
+      this.setMode('sending');
+      this.setStatus('sending ciphertext');
+      await this.app.sendNewMsg();
+      this.app.verifyMsgHasOnly(['plaintext', 'key', 'ciphertext', 'ttl', 'id']);
+      this.setMsgUi();
+      // TODO wait for user interaction for next step?
+      this.setMode('sent');
+      this.setStatus('sent ciphertext');
+      if (!this.app.msg.debug) {
+        this.onGoForm();
+      }
+    } catch (err) {
+      console.error(err);
+      this.setMode('error');
+      this.setStatus(err.message);
+    }
+  }
+
+  async onGoForm(event) {
+    try {
+      if (event) event.stopPropagation();
+      this.app.verifyMsgHasOnly(['plaintext', 'key', 'ciphertext', 'ttl', 'id']);
+      this.setMsgUi();
+      this.setMode('loading');
+      this.setStatus('loading the "read" interface');
+      const msg = this.app.msg;
+      window.location.replace(`/${msg.id}#${msg.key}`)
+      // clear out the msg
+      // this.app.setMsgNew();
+      // loadFromUrl();
+      if (!this.app.msg.debug) {
+        this.onLoadForm();
+      }
+    } catch (err) {
+      console.error(err);
+      this.setMode('error');
+      this.setStatus(err.message);
+    }
+  }
+
+  // auto-load onto the "read" interface
+  async onLoadForm(event) {
+    try {
+      if (event) event.stopPropagation();
+      this.setMode('downloadable');
+      this.setStatus('read ciphertext');
+      if (!this.app.msg.debug) {
+        // this.onGoForm();
+      }
+    } catch (err) {
+      console.error(err);
+      this.setMode('error');
+      this.setStatus(err.message);
+    }
+  }
+
+  // this is a downloadable status
+  async onStartRead(event) {
+    try {
+      if (event) event.stopPropagation();
+      this.setMode('downloadable');
+      this.setStatus('reading URL data');
+      this.app.setMsgNew();
+      this.app.loadFromUrl();
+      if (this.app.msg.key) {
+        this.app.verifyMsgHasOnly(['key', 'id']);
+      } else {
+        this.app.verifyMsgHasOnly(['id']);
+      }
+      this.setMsgUi();
+      // start downloading
+      this.setMode('downloading');
+      this.setStatus('downloading from server');
+      // TODO download from server
+      this.setMsgUi();
+    } catch (err) {
+      console.error(err);
+      this.setMode('error');
+      this.setStatus(err.message);
+    }
+  }
+
 
   verifyDoms() {
     Object.keys(this.doms).forEach((key) => {
@@ -117,6 +244,7 @@ export default class AppUi {
 
   setMode(mode) {
     if (MODES.indexOf(mode) === -1) {
+      console.error(mode);
       throw new Error(`Invalid mode: ${mode}`);
     }
     this.mode = mode;
@@ -148,13 +276,6 @@ export default class AppUi {
       dom.style.opacity = 1;
     });
   }
-  // show a block
-  styleMinimal(doms) {
-    doms.forEach(dom => {
-      dom.style.display = 'block';
-      dom.style.opacity = 0.7;
-    });
-  }
 
   renderMode() {
     console.log('renderMode', this.mode);
@@ -182,46 +303,60 @@ export default class AppUi {
         this.styleShow([
           doms.write,
         ]);
+        doms.tab_write.click();
         break;
       case 'encrypting':
-        this.styleMinimal([
-          doms.write,
-        ]);
         this.styleShow([
+          doms.write,
           doms.sending,
         ]);
+        doms.tab_encrypt.click();
         break;
       case 'encrypted':
-        this.styleMinimal([
-          doms.write,
-        ]);
         this.styleShow([
+          doms.write,
           doms.sending,
         ]);
+        doms.tab_encrypt.click();
         break;
       case 'sending':
-        this.styleMinimal([
+        this.styleShow([
           doms.write,
           doms.sending,
-        ]);
-        this.styleShow([
           doms.sent,
         ]);
+        doms.tab_send.click();
         break;
       case 'sent':
-        this.styleMinimal([
+        this.styleShow([
           doms.write,
           doms.sending,
-        ]);
-        this.styleShow([
           doms.sent,
         ]);
+        doms.tab_send.click();
+        break;
       // reader
       case 'downloadable':
       case 'downloading':
+        this.styleShow([
+          doms.read,
+          doms.load,
+        ]);
+        doms.tab_download.click();
+        break;
       case 'downloaded':
+        this.styleShow([
+          doms.read,
+        ]);
+        doms.tab_download.click();
+        break;
       case 'decrypting':
       case 'decrypted':
+        this.styleShow([
+          doms.read,
+        ]);
+        doms.tab_decrypt.click();
+        break;
 
       default:
         this.setStatus('Error - invalid mode');
