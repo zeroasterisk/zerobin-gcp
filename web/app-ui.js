@@ -62,7 +62,7 @@ export default class AppUi {
       tab_download: document.querySelector('#tab-download'),
       tab_decrypt: document.querySelector('#tab-decrypt'),
       // read before decrypt
-      read_form: document.querySelector('#read-form'),
+      decrypt_form: document.querySelector('#decrypt-form'),
       read_key: document.querySelector('#read-key'),
       read_ciphertext: document.querySelector('#read-ciphertext'),
       // read after decrypt
@@ -70,16 +70,19 @@ export default class AppUi {
     };
     this.verifyDoms();
     // setup event listeners
-    window.addEventListener("hashchange", this.onHashChange.bind(this), false);
+    window.addEventListener('hashchange', this.onHashChange.bind(this), false);
     this.doms.write_form.addEventListener('submit', this.onWriteForm.bind(this));
     this.doms.send_form.addEventListener('submit', this.onSendForm.bind(this));
+    this.doms.decrypt_form.addEventListener('submit', this.onDecryptForm.bind(this));
   }
 
+  // on page load
   initialize() {
     this.app.loadFromUrl();
     setTimeout(this.onHashChange.bind(this), 30);
   }
 
+  // any time the Hash changes
   onHashChange() {
     try {
       const hash = window.location.hash;
@@ -91,16 +94,18 @@ export default class AppUi {
         || hash === '#encrypt-panel'
         || hash === '#sent-panel') return null;
       // reading
-      // if (hash === '#download-panel'
-      //   || hash === '#decrypt-panel') return null;
+      if (hash === '#download-panel'
+        || hash === '#decrypt-panel') return null;
       return this.onStartRead();
     } catch (err) {
       console.error(err);
       this.setMode('error');
       this.setStatus(err.message);
+      return false;
     }
   }
 
+  // when you click "new"
   onReset(event) {
     try {
       if (event) event.stopPropagation();
@@ -116,6 +121,7 @@ export default class AppUi {
     }
   }
 
+  // when you submit a plaintext to encrypt
   async onWriteForm(event) {
     try {
       if (event) event.stopPropagation();
@@ -139,6 +145,7 @@ export default class AppUi {
     }
   }
 
+  // when you send encrypted ciphertext to the server
   async onSendForm(event) {
     try {
       if (event) event.stopPropagation();
@@ -153,7 +160,7 @@ export default class AppUi {
       this.setMode('sent');
       this.setStatus('sent ciphertext');
       if (!this.app.msg.debug) {
-        this.onGoForm();
+        this.onGoToNewURL();
       }
     } catch (err) {
       console.error(err);
@@ -162,18 +169,18 @@ export default class AppUi {
     }
   }
 
-  async onGoForm(event) {
+  // go to the new URL with the proper hash
+  async onGoToNewURL(event) {
     try {
       if (event) event.stopPropagation();
       this.app.verifyMsgHasOnly(['plaintext', 'key', 'ciphertext', 'ttl', 'id']);
       this.setMsgUi();
       this.setMode('loading');
       this.setStatus('loading the "read" interface');
-      const msg = this.app.msg;
-      window.location.replace(`/${msg.id}#${msg.key}`)
+      const url = this.app.getUrl();
       // clear out the msg
-      // this.app.setMsgNew();
-      // loadFromUrl();
+      this.app.setMsgNew();
+      window.location.replace(url);
       if (!this.app.msg.debug) {
         this.onLoadForm();
       }
@@ -191,7 +198,7 @@ export default class AppUi {
       this.setMode('downloadable');
       this.setStatus('read ciphertext');
       if (!this.app.msg.debug) {
-        // this.onGoForm();
+        // this.onGoToNewURL();
       }
     } catch (err) {
       console.error(err);
@@ -207,18 +214,26 @@ export default class AppUi {
       this.setMode('downloadable');
       this.setStatus('reading URL data');
       this.app.setMsgNew();
-      this.app.loadFromUrl();
-      if (this.app.msg.key) {
-        this.app.verifyMsgHasOnly(['key', 'id']);
-      } else {
-        this.app.verifyMsgHasOnly(['id']);
-      }
+      await this.app.loadFromUrl();
+      this.app.verifyMsgHasOnly(['id'], ['key']);
       this.setMsgUi();
       // start downloading
       this.setMode('downloading');
       this.setStatus('downloading from server');
       // TODO download from server
+      if (this.app.msg.id === 'mockid') {
+        this.app.setMsg({
+          ciphertext: '4b973f7f9efa6dc0b9075ac55e258534b9c0d874e1c3c687674f3b5891dac42c9dd7',
+          debug: true,
+        });
+      } else {
+        console.log(this.app.msg);
+        throw new Error('Download not built yet');
+      }
       this.setMsgUi();
+      if (!this.app.msg.debug) {
+        this.onDecryptForm();
+      }
     } catch (err) {
       console.error(err);
       this.setMode('error');
@@ -226,6 +241,27 @@ export default class AppUi {
     }
   }
 
+  // this is a decryptable status
+  async onDecryptForm(event) {
+    try {
+      if (event) event.stopPropagation();
+      this.setMode('downloaded');
+      this.setStatus('decrypting the downloaded data');
+      this.app.verifyMsgHasOnly(['key', 'id', 'ciphertext'], ['ttl']);
+      this.setMsgUi();
+      // start decrypting
+      this.setMode('decrypting');
+      this.setStatus('decrypting on the client');
+      this.app.setMsg(await this.app.decryptMsg());
+      this.app.verifyMsgHasOnly(['key', 'id', 'ciphertext', 'plaintext'], ['ttl']);
+      this.setMsgUi();
+      this.setMode('decrypted');
+    } catch (err) {
+      console.error(err);
+      this.setMode('error');
+      this.setStatus(err.message);
+    }
+  }
 
   verifyDoms() {
     Object.keys(this.doms).forEach((key) => {
@@ -265,20 +301,21 @@ export default class AppUi {
 
   // show a block
   styleHide(doms) {
-    doms.forEach(dom => {
+    doms.forEach((dom) => {
       dom.style.display = 'none';
     });
   }
+
   // show a block
   styleShow(doms) {
-    doms.forEach(dom => {
+    doms.forEach((dom) => {
       dom.style.display = 'block';
       dom.style.opacity = 1;
     });
   }
 
   renderMode() {
-    console.log('renderMode', this.mode);
+    console.log('renderMode', this.mode, this.app.msg);
     const doms = this.doms;
     this.styleHide([
       doms.load,
@@ -351,6 +388,12 @@ export default class AppUi {
         doms.tab_download.click();
         break;
       case 'decrypting':
+        this.styleShow([
+          doms.read,
+          doms.load,
+        ]);
+        doms.tab_decrypt.click();
+        break;
       case 'decrypted':
         this.styleShow([
           doms.read,
@@ -360,8 +403,7 @@ export default class AppUi {
 
       default:
         this.setStatus('Error - invalid mode');
-        this.styleShow([ doms.error, ]);
+        this.styleShow([doms.error]);
     }
   }
 }
-

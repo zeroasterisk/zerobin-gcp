@@ -60,11 +60,12 @@ class AesCtr {
   async encrypt(plaintext) {
     if (typeof plaintext === 'string') {
       return this.encrypt_strict(
-        stringToUtf8ByteArray(plaintext)
+        stringToUtf8ByteArray(plaintext),
       );
     }
-    return this.encrypt_strict(plaintext)
+    return this.encrypt_strict(plaintext);
   }
+
   async encrypt_strict(plaintext) {
     requireUint8Array(plaintext);
     const iv = randBytes(this.myIvSize);

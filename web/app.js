@@ -6,6 +6,7 @@
  *
  */
 import msgWrite from './msg_write';
+import msgRead from './msg_read';
 
 export default class App {
   constructor() {
@@ -57,32 +58,49 @@ export default class App {
   }
 
   async decryptMsg() {
-    // TODO
+    const plaintext = await msgRead(this.msg.key, this.msg.plaintext);
+    this.setMsg({ plaintext });
+    return this.msg;
   }
 
-  loadFromUrl() {
-    const hash = window.location.hash.replace(/^#/, 'xyz');
+  async loadFromUrl() {
+    // TODO consider mmaking this wait
+    const hash = window.location.hash.replace(/^#/, '');
     const parts = hash.split('|');
     const id = parts[0];
+    // blacklist known app anchors
+    if ([
+      'new',
+      'about',
+      'writing-panel',
+      'encrypt-panel',
+      'sent-panel',
+      'download-panel',
+      'decrypt-panel',
+    ].indexOf(id) !== -1) return null;
+    // carry on
     const key = (parts.length > 1) ? parts[1] : null;
     if (id && key) {
       this.setMsg({ id, key });
     } else if (id) {
       this.setMsg({ id });
     }
+    return this.msg;
   }
 
   async sendNewMsg() {
-    this.verifyMsgHasOnly(['plaintext', 'key', 'ciphertext']);
+    this.verifyMsgHasOnly(['plaintext', 'key', 'ciphertext', 'ttl']);
     // TODO send to GCP via Function
     this.setMsg({ id: 'mockid' });
   }
 
-  verifyMsgHasOnly(fields) {
+  verifyMsgHasOnly(fields, optionalFields = []) {
     const fieldsFalseable = ['burn', 'debug'];
     Object.keys(this.msg).forEach((field) => {
-      // omit checkboxes (can be false)
-      if (fieldsFalseable.indexOf(field)) return;
+      // omit checkboxes (can be false, true, or null)
+      if (fieldsFalseable.indexOf(field) !== -1) return;
+      // omit optionalFields (can be null)
+      if (optionalFields.indexOf(field) !== -1) return;
       // other field, has value = error
       if (fields.indexOf(field) === -1 && this.msg[field]) {
         throw new Error(`Msg should not have a value for "${field}" right now`);
@@ -91,7 +109,7 @@ export default class App {
       if (fields.indexOf(field) !== -1 && !this.msg[field]) {
         throw new Error(`Msg should have a value for "${field}" right now`);
       }
+      // console.log('verifyMsgHasOnly', field, this.msg[field], fields);
     });
   }
-
 }

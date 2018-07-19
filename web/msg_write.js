@@ -5,10 +5,10 @@ import {
 // https://jameshfisher.com/2017/11/02/web-cryptography-api-symmetric-encryption.html
 //
 //
-const buf2hex = (buf) => (
+const buf2hex = buf => (
   Array.prototype.map.call(
     new Uint8Array(buf),
-    x => (('00' + x.toString(16)).slice(-2))
+    x => ((`00${x.toString(16)}`).slice(-2)),
   ).join('')
 );
 //

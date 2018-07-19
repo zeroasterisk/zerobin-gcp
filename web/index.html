@@ -105,17 +105,17 @@
                   <h6>Psst... we are not sending the Key</h6>
                   <div class="mdl-textfield mdl-js-textfield">
                     <input class="mdl-textfield__input" type="text" id="write-key" readOnly disabled>
-                    <label class="mdl-textfield__label" for="sample1">Decryption Key</label>
+                    <!--<label class="mdl-textfield__label" for="sample1">Decryption Key</label>-->
                   </div>
                 </div>
               </div>
               <div class="mdl-tabs__panel" id="sent-panel">
                 <div id="sent" style="display: none;">
                   <p>The server has Saved the encrypted content</p>
-                  <p>Only you have the key (below)</p>
+                  <p>Only you have the key, which you can see in the URL below</p>
                   <div class="mdl-textfield mdl-js-textfield">
                     <input class="mdl-textfield__input" type="text" id="write-url" readOnly disabled>
-                    <label class="mdl-textfield__label" for="sample1">URL</label>
+                    <!--<label class="mdl-textfield__label" for="sample1">URL</label>-->
                   </div>
                   <br>
                   <a
@@ -136,15 +136,17 @@
               </div>
               <div class="mdl-tabs__panel is-active" id="download-panel">
                 <div id="reading">
-                  <form id="read-form" action="javascript:void(null)">
+                  <form id="decrypt-form" action="javascript:void(null)">
+                    <p>Encrypted ciphertext...</p>
                     <div class="mdl-textfield mdl-js-textfield">
                       <textarea class="mdl-textfield__input" type="text" rows="3"
-                        id="read-ciphertext" readOnly disabled></textarea>
-                      <label class="mdl-textfield__label" for="sample5">Encrypted ciphertext...</label>
+                        id="read-ciphertext" readOnly disabled>4b973f7f9efa6dc0b9075ac55e258534b9c0d874e1c3c687674f3b5891dac42c9dd7</textarea>
+                      <!--<label class="mdl-textfield__label" for="sample5">Encrypted ciphertext...</label>-->
                     </div>
+                    <p>Decryption Key</p>
                     <div class="mdl-textfield mdl-js-textfield">
                       <input class="mdl-textfield__input" type="text" id="read-key" readOnly disabled>
-                      <label class="mdl-textfield__label" for="sample1">Decryption Key</label>
+                      <!--<label class="mdl-textfield__label" for="sample1">Decryption Key</label>-->
                     </div>
                     <br>
                     <button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent" type="submit">Decrypt it</button>

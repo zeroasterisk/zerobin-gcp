@@ -9,7 +9,7 @@ async function main() {
     const appUi = new AppUi(app);
     console.log('app', app);
     console.log('appUi', appUi);
-    appUi.initialize()
+    setTimeout(() => appUi.initialize(), 100);
   } catch (err) {
     console.error('something went wrong in main()', err);
   }
