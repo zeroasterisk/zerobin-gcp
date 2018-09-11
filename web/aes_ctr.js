@@ -26,7 +26,10 @@ class BrowserNotSupported extends Error {
   }
 }
 const getCrypto = () => {
-  const crypto = global.crypto || global.msCrypto;
+  const crypto = window.crypto || window.msCrypto;
+  if (window.crypto.webkitSubtle) {
+    window.crypto.subtle = window.crypto.webkitSubtle; //for Safari
+  }
   if (!crypto) {
     throw new BrowserNotSupported('Missing crypto module');
   }
@@ -72,7 +75,8 @@ class AesCtr {
     const counter = new Uint8Array(AES_BLOCK_SIZE_IN_BYTES);
     counter.set(iv);
     const alg = { name: 'AES-CTR', counter, length: 128 };
-    const ciphertext = await window.crypto.subtle.encrypt(alg, this.myKey, plaintext);
+    const crypto = getCrypto();
+    const ciphertext = await crypto.subtle.encrypt(alg, this.myKey, plaintext);
     return concatenate(Uint8Array, iv, new Uint8Array(ciphertext));
   }
 
@@ -84,7 +88,8 @@ class AesCtr {
     const counter = new Uint8Array(AES_BLOCK_SIZE_IN_BYTES);
     counter.set(ciphertext.slice(0, this.myIvSize));
     const alg = { name: 'AES-CTR', counter, length: 128 };
-    return new Uint8Array(await window.crypto.subtle.decrypt(
+    const crypto = getCrypto();
+    return new Uint8Array(await crypto.subtle.decrypt(
       alg, this.myKey, new Uint8Array(ciphertext.slice(this.myIvSize)),
     ));
   }
@@ -99,16 +104,17 @@ export const newInstance = async function (key, ivSize) {
       } and at most ${AES_BLOCK_SIZE_IN_BYTES}`,
     );
   }
-  if (typeof global.crypto === 'undefined') {
+  const crypto = getCrypto();
+  if (typeof crypto === 'undefined') {
     throw new BrowserNotSupported('Missing crypto module');
   }
-  if (typeof global.crypto.subtle === 'undefined') {
+  if (typeof crypto.subtle === 'undefined') {
     throw new BrowserNotSupported('Missing crypto.subtle module');
   }
   requireUint8Array(key);
   validateAesKeySize(key.length);
 
-  const cryptoKey = await window.crypto.subtle.importKey(
+  const cryptoKey = await crypto.subtle.importKey(
     'raw', key, { name: 'AES-CTR', length: key.length }, false,
     ['encrypt', 'decrypt'],
   );
