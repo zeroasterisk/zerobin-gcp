@@ -12,6 +12,7 @@ const hex2buf = (hex) => {
 };
 
 export default async function msgRead(key, ciphertext) {
+  console.log({ key, ciphertext });
   const ivSize = 16;
   const keyArr = hex2buf(key);
   const cipher = await newInstance(keyArr, ivSize);

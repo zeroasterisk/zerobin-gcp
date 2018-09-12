@@ -64,7 +64,7 @@ export default class App {
   }
 
   async loadFromUrl() {
-    // TODO consider mmaking this wait
+    // TODO consider making this wait
     const hash = window.location.hash.replace(/^#/, '');
     const parts = hash.split('|');
     const id = parts[0];

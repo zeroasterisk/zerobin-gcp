@@ -1,1 +1,0 @@
-# Zerobin GCP Function: Store
