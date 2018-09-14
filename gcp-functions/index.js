@@ -4,9 +4,15 @@
 const Firestore = require('@google-cloud/firestore');
 
 const firestore = new Firestore({
-  // projectId: 'zerobin-gcp',
+  projectId: 'zerobin-gcp',
   // keyFilename: '/cred/zerobin-gcp-283c585d8a86.json',
+  timestampsInSnapshots: true,
 });
+
+// configuration for writes
+const REQ_KEYS = ['ciphertext', 'ttl'];
+const BAD_KEYS = ['plaintext', 'key', 'id'];
+const ALLOWED_KEYS = ['ciphertext', 'ttl', 'burn', 'debug'];
 
 /**
  * Retrieve or Store a method into Firestore
@@ -47,21 +53,28 @@ exports.main = (req, res) => {
  * @param {!express:Response} res HTTP response context.
  */
 exports.retrieve = (req, res) => {
-  const id = (req.query && req.query.id) || null;
+  const idRaw = (req.query && req.query.id) || '';
+  const id = `${idRaw}`.replace(/[^a-zA-Z0-9\-\_]/g, '').trim();
   if (!(id && id.length)) {
     return res.status(404).send({ error: 'No Id' });
   }
-  const document = firestore.doc(`zerobin-gcp/${id}`);
-  return document.get().then(doc => {
-    return res.status(200).send(doc);
-  }).catch(err => {
-    return res.status(404).send({ error: 'unable to find the document' });
-  });
+  return firestore.collection('zerobin-gcp')
+    .doc(id)
+    .get()
+    .then(doc => {
+      if (!(doc && doc.exists)) {
+        return res.status(404).send({ error: 'Unable to find the document' });
+      }
+      const data = doc.data();
+      if (!data) {
+        return res.status(404).send({ error: 'Found document is empty' });
+      }
+      return res.status(200).send(data);
+    }).catch(err => {
+      return res.status(404).send({ error: 'Unable to retrieve the document' });
+    });
 };
 
-const REQ_KEYS = ['ciphertext', 'ttl'];
-const BAD_KEYS = ['plaintext', 'key', 'id'];
-const ALLOWED_KEYS = ['ciphertext', 'ttl', 'burn', 'debug'];
 
 /**
  * Store a document to Firestore
@@ -79,39 +92,70 @@ const ALLOWED_KEYS = ['ciphertext', 'ttl', 'burn', 'debug'];
  */
 exports.store = (req, res) => {
   const data = (req.body) || {};
-  const keys = Object.keys(data);
-  const missing_req_keys = REQ_KEYS.filter(k => {
-    return keys.indexOf(k) === -1
-  });
-  if (missing_req_keys.length) {
-    return res.status(422).send({ error: `Missing required fields: ${missing_req_keys.join(', ')}` });
-  }
-  const present_bad_keys = BAD_KEYS.filter(k => {
-    return keys.indexOf(k) !== -1
-  });
-  if (present_bad_keys.length) {
-    return res.status(422).send({ error: `NOT allowed fields: ${missing_req_keys.join(', ')}` });
-  }
-  const present_not_allowed_keys = keys.filter(k => {
-    return ALLOWED_KEYS.indexOf(k) !== -1
-  });
-  if (present_bad_keys.length) {
-    return res.status(422).send({ error: `Not allowed fields: ${missing_req_keys.join(', ')}` });
+  const error = exports.verify_data(data);
+  if (error) {
+    console.error('store rejected input', error);
+    return res.status(422).send({ error });
   }
   const ttl = Number.parseInt(data.ttl);
-  const burn = Number.parseInt(data.burn);
-  const debug = Number.parseInt(data.debug);
+  const burn = !!Number.parseInt(data.burn);
+  const debug = !!Number.parseInt(data.debug);
   const ciphertext = data.ciphertext.trim();
+  const created = new Date();
+  const expires = new Date();
+  expires.setTime(created.getTime() + (ttl * 86400000));
 
   return firestore.collection('zerobin-gcp').add({
+    created,
+    expires,
     ttl,
     burn,
     debug,
     ciphertext,
   }).then(doc => {
-    return res.status(200).send({ id: doc.id });
+    // console.log('stored new doc', doc);
+    return res.status(200).send({
+      id: doc.id,
+      expires,
+    });
   }).catch(err => {
-    return res.status(404).send({ error: 'unable to find the document' });
+    console.error('unable to store', err)
+    // return res.status(404).send({ error: err });
+    return res.status(404).send({ error: 'Unable to store', err });
   });
 };
+
+/**
+ * Verify incomming data for a new document
+ *
+ * Must have the body params: ciphertext, ttl (misc)
+ * Can not include the params: plaintext, key, id (will error)
+ *
+ * success: returns null
+ *    else: returns an error<string>
+ *
+ * @param {} data for the new document
+ */
+exports.verify_data = (data) => {
+  const keys = Object.keys(data);
+  const missing_req_keys = REQ_KEYS.filter(k => {
+    return keys.indexOf(k) === -1
+  });
+  if (missing_req_keys.length) {
+    return `Missing required fields: ${missing_req_keys.join(', ')}`;
+  }
+  const present_bad_keys = BAD_KEYS.filter(k => {
+    return keys.indexOf(k) !== -1
+  });
+  if (present_bad_keys.length) {
+    return `REJECTED fields: ${present_bad_keys.join(', ')}`;
+  }
+  const present_not_allowed_keys = keys.filter(k => {
+    return ALLOWED_KEYS.indexOf(k) === -1
+  });
+  if (present_not_allowed_keys.length) {
+    return `Not allowed fields: ${present_not_allowed_keys.join(', ')}`;
+  }
+  return null;
+}
 
