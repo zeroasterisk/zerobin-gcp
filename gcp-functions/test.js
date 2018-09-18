@@ -1,5 +1,5 @@
-// application code
-import func from './index';
+import Firestore from '@google-cloud/firestore';
+
 
 // ava test framework
 import test from 'ava';
@@ -9,15 +9,85 @@ import request from 'supertest';
 import express from 'express';
 import bodyParser from 'body-parser';
 
+// application code
+import func from './index';
+
 // mock app - pretending to be instrumented through a function
 const app = express()
   .use(bodyParser.json())
   .get('/retrieve', func.retrieve)
   .post('/store', func.store)
+  .all('/main', func.main)
   .all('/', func.main);
 
 // hardcoded fixture ids (must exist in the firestore)
 const FIX_ID_1 = 'CgnTycJHTErpuFaSnb9Z';
+const FIX_DATA = {
+  ciphertext: 'daa5370871aa301e5e12d4274d80691f75e295d648aa84b73e291d8c82',
+  ttl: 99,
+  debug: true,
+  burn: false,
+  expires: false,
+  created: false,
+};
+
+
+
+// this is really a bit of a "fixture setup" vs. a test
+test('setup our fixture data', async t => {
+  const firestore = new Firestore({
+    projectId: 'zerobin-gcp',
+    timestampsInSnapshots: true,
+  });
+  firestore.collection('zerobin-gcp')
+    .doc(FIX_ID_1)
+    .set(FIX_DATA)
+    .then(doc => {
+      t.deepEqual(doc.id, FIX_ID_1);
+    })
+});
+
+
+test('healthcheck basic returns 200 no matter what', async t => {
+  const res = await request(app)
+    .get('/main')
+    .query({ healthcheck: 1 })
+    .catch(e => f.fail(e));
+
+  t.is(res.status, 200);
+});
+test('healthcheck full only returns 200 after full CRUD', async t => {
+  const res = await request(app)
+    .get('/main')
+    .query({ healthcheck: 'full' })
+    .catch(e => f.fail(e));
+
+  t.is(res.status, 200);
+});
+test('expire will trigger the expire functionality', async t => {
+  const res = await request(app)
+    .get('/main')
+    .query({ expire: 1 })
+    .catch(e => f.fail(e));
+
+  t.is(res.status, 200);
+});
+test('expire=debug will purge all debug=true items', async t => {
+  const res = await request(app)
+    .get('/main')
+    .query({ expire: 'debug' })
+    .catch(e => f.fail(e));
+
+  t.is(res.status, 200);
+});
+test('expire=debug_false will purge all debug=false items', async t => {
+  const res = await request(app)
+    .get('/main')
+    .query({ expire: 'debug_false' })
+    .catch(e => f.fail(e));
+
+  t.is(res.status, 200);
+});
 
 test('retrieve gives 404 without an id', async t => {
   const res = await request(app)
@@ -57,11 +127,7 @@ test('retrieve fixture document with 200', async t => {
   t.is(typeof res.body, 'object');
   delete res.body.created
   delete res.body.expires
-  t.deepEqual(res.body, {
-    ciphertext: 'daa5370871aa301e5e12d4274d80691f75e295d648aa84b73e291d8c82',
-    key: '65eaa9ba497f4527eb6a3131265e7439',
-    ttl: 99,
-  });
+  t.deepEqual(res.body, FIX_DATA);
 });
 
 test('verify_data should return null if valid data passed in', t => {
@@ -119,7 +185,6 @@ test('store a valid fake document with 200, return just the id and expires date'
   // t.is(res.status, 200);
   t.is(typeof res, 'object');
   t.is(typeof res.body, 'object');
-  console.log('response', res.body);
   t.is(res.body.error, undefined);
   t.is(typeof res.body.id, 'string');
   // t.is(typeof res.body.expires, 'date');

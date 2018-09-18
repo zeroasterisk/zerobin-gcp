@@ -30,6 +30,12 @@ const ALLOWED_KEYS = ['ciphertext', 'ttl', 'burn', 'debug'];
  * @param {!express:Response} res HTTP response context.
  */
 exports.main = (req, res) => {
+  if (req.query && req.query.healthcheck) {
+    return exports.healthcheck(req, res);
+  }
+  if (req.query && req.query.expire) {
+    return exports.expire(req, res);
+  }
   if (req.method === 'POST') {
     return exports.store(req, res);
   }
@@ -37,7 +43,84 @@ exports.main = (req, res) => {
     throw 'not yet built';
   }
   return exports.retrieve(req, res);
-}
+};
+
+/**
+ * Run a super-simple healthcheck on the function
+ *
+ * success: returns {status: ok}
+ *    else: returns an {error:<string>} & status=500
+ *
+ * @param {!express:Request} req HTTP request context.
+ * @param {!express:Response} res HTTP response context.
+ */
+exports.healthcheck = (req, res) => {
+  const healthcheckType = (req.query && req.query.healthcheck) || '';
+  if (healthcheckType == 'full') {
+    let id = null;
+    // lets do a full CRUD cycle and verify functionality
+    const created = new Date().getTime();
+    const expires = created + 60000;
+
+    firestore.collection('zerobin-gcp')
+      .add({ created, expires, healthcheck: true })
+      .then(doc => {
+        id = doc.id;
+        firestore.collection('zerobin-gcp')
+          .doc(id)
+          .get()
+          .then(doc => {
+            if (!(doc && doc.exists)) {
+              console.log('doc not exists', id);
+              return res.status(500).send({
+                status: 'error',
+                error: 'Unable to find the document'
+              });
+            }
+            const data = doc.data();
+            if (!data) {
+              console.log('doc no data', doc);
+              return res.status(500).send({
+                status: 'error',
+                error: 'Found document is empty'
+              });
+            }
+            firestore.collection('zerobin-gcp')
+              .doc(id)
+              .delete()
+              .then(x => {
+                return res.status(200).send({ status: 'ok', id });
+              });
+          });
+      }).catch(err => {
+        const error = 'Unable to retrieve the document';
+        console.error(error, err);
+        return res.status(500).send({ error, err });
+      });
+    return;
+  }
+  // healthcheck made it here... i guess we are ok
+  return res.status(200).send({ status: 'ok' });
+};
+
+/**
+ * Run a super-simple healthcheck on the function
+ *
+ * success: returns {status: ok}
+ *    else: returns an {error:<string>} & status=500
+ *
+ * @param {!express:Request} req HTTP request context.
+ * @param {!express:Response} res HTTP response context.
+ */
+exports.expire = (req, res) => {
+  purgeExpire(req.query.expire).then(() => {
+    return res.status(200).send({ status: 'ok' });
+  }).catch(err => {
+    const error = 'Unable to process expiration';
+    console.error(error, err);
+    return res.status(500).send({ error, err });
+  });
+};
 
 /**
  * Get a document from Firestore, by ID
@@ -71,7 +154,9 @@ exports.retrieve = (req, res) => {
       }
       return res.status(200).send(data);
     }).catch(err => {
-      return res.status(404).send({ error: 'Unable to retrieve the document' });
+      const error = 'Unable to retrieve the document';
+      console.error(error, err);
+      return res.status(404).send({ error, err });
     });
 };
 
@@ -101,9 +186,8 @@ exports.store = (req, res) => {
   const burn = !!Number.parseInt(data.burn);
   const debug = !!Number.parseInt(data.debug);
   const ciphertext = data.ciphertext.trim();
-  const created = new Date();
-  const expires = new Date();
-  expires.setTime(created.getTime() + (ttl * 86400000));
+  const created = new Date().getTime();
+  const expires = created + (ttl * 86400000);
 
   return firestore.collection('zerobin-gcp').add({
     created,
@@ -119,9 +203,9 @@ exports.store = (req, res) => {
       expires,
     });
   }).catch(err => {
-    console.error('unable to store', err)
-    // return res.status(404).send({ error: err });
-    return res.status(404).send({ error: 'Unable to store', err });
+    const error = 'unable to store';
+    console.error(error, err);
+    return res.status(404).send({ error, err });
   });
 };
 
@@ -159,3 +243,86 @@ exports.verify_data = (data) => {
   return null;
 }
 
+/**
+ * Trash Expires
+ *
+ * success: returns {status:ok}
+ *    else: returns an error<string>
+ *
+ * @param {string} optional contorl for type of expiry
+ * @return {promise}
+ */
+const purgeExpire = (purgeType) => {
+  const now = new Date().getTime();
+  const db = firestore;
+  const collectionRef = db.collection('zerobin-gcp');
+  const batchSize = 100;
+  let query = collectionRef.where('expires', '<', now);
+  // useful for dev only
+  // if (purgeType == 'all') {
+  //   query = collectionRef;
+  // } else if (purgeType == 'debug') {
+  //   query = collectionRef.where('debug', '==', true);
+  // } else if (purgeType == 'debug_false') {
+  //   query = collectionRef.where('debug', '==', false);
+  // }
+  query.orderBy('__name__').limit(batchSize);
+  console.log('about to return promise');
+  return new Promise((resolve, reject) => {
+    console.log('about to trigger deleteQueryBatch');
+    deleteQueryBatch(db, query, batchSize, resolve, reject);
+  });
+}
+
+/**
+ * Recursivly delete "pages" of records
+ *
+ * function copied from docs
+ * @link https://firebase.google.com/docs/firestore/manage-data/delete-data
+ *
+ * @param {!firestore:Collection} database connection
+ * @param {!firestore:CollectionRef} query filter of the Collection
+ * @param {int} page size
+ * @param {function} resolve promise
+ * @param {function} reject promise
+ * @return void
+ */
+
+const deleteQueryBatch = (db, query, batchSize, resolve, reject) => {
+  query.get()
+      .then((snapshot) => {
+        console.log('deleteQueryBatch');
+        // When there are no documents left, we are done
+        if (snapshot.size == 0) {
+          return 0;
+        }
+
+        // Delete documents in a batch
+        const batch = db.batch();
+        snapshot.docs.forEach((doc) => {
+          console.log('.');
+          batch.delete(doc.ref);
+        });
+
+        console.log('!');
+        return batch.commit().then(() => {
+          console.log('committed');
+          return snapshot.size;
+        });
+      }).then((numDeleted) => {
+        console.log('numDeleted', numDeleted);
+        if (numDeleted === 0) {
+          resolve();
+          return;
+        }
+
+        // Recurse on the next process tick, to avoid
+        // exploding the stack.
+        console.log('recurse');
+        process.nextTick(() => {
+          console.log('nextTick');
+          deleteQueryBatch(db, query, batchSize, resolve, reject);
+        });
+      })
+      .catch(reject);
+};
