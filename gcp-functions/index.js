@@ -5,8 +5,11 @@ const Firestore = require('@google-cloud/firestore');
 
 const firestore = new Firestore({
   projectId: 'zerobin-gcp',
-  // keyFilename: '/cred/zerobin-gcp-283c585d8a86.json',
   timestampsInSnapshots: true,
+  // NOTE don't hardcode your project credentials here
+  // if you have to, export the following to your shell
+  // GOOGLE_APPLICATION_CREDENTIALS=<path>
+  // keyFilename: '/cred/zerobin-gcp-000000000000.json',
 });
 
 // configuration for writes
@@ -137,7 +140,7 @@ exports.expire = (req, res) => {
  */
 exports.retrieve = (req, res) => {
   const idRaw = (req.query && req.query.id) || '';
-  const id = `${idRaw}`.replace(/[^a-zA-Z0-9\-\_]/g, '').trim();
+  const id = `${idRaw}`.replace(/[^a-zA-Z0-9\-_]/g, '').trim();
   if (!(id && id.length)) {
     return res.status(404).send({ error: 'No Id' });
   }
@@ -185,10 +188,12 @@ exports.store = (req, res) => {
   const ttl = Number.parseInt(data.ttl);
   const burn = !!Number.parseInt(data.burn);
   const debug = !!Number.parseInt(data.debug);
-  const ciphertext = data.ciphertext.trim();
+  const ciphertext = (data.ciphertext || '')
+    .replace(/[^a-zA-Z0-9\-_!.,; ']*/g, '')
+    .trim();
   const created = new Date().getTime();
   const expires = created + (ttl * 86400000);
-
+  // .add() will automatically assign an id
   return firestore.collection('zerobin-gcp').add({
     created,
     expires,
@@ -197,7 +202,7 @@ exports.store = (req, res) => {
     debug,
     ciphertext,
   }).then(doc => {
-    // console.log('stored new doc', doc);
+    // console.info('stored new doc id#', doc.id);
     return res.status(200).send({
       id: doc.id,
       expires,
