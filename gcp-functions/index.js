@@ -43,7 +43,7 @@ exports.main = (req, res) => {
     return exports.store(req, res);
   }
   if (req.method === 'DELETE') {
-    throw 'not yet built';
+    return exports.delete(req, res);
   }
   return exports.retrieve(req, res);
 };
@@ -139,10 +139,12 @@ exports.expire = (req, res) => {
  * @param {!express:Response} res HTTP response context.
  */
 exports.retrieve = (req, res) => {
-  const idRaw = (req.query && req.query.id) || '';
-  const id = `${idRaw}`.replace(/[^a-zA-Z0-9\-_]/g, '').trim();
-  if (!(id && id.length)) {
+  if (!(req.query && req.query.id)) {
     return res.status(404).send({ error: 'No Id' });
+  }
+  const id = req.query.id.replace(/[^a-zA-Z0-9]/g, '').trim();
+  if (!(id && id.length)) {
+    return res.status(404).send({ error: 'Invalid Id' });
   }
   return firestore.collection('zerobin-gcp')
     .doc(id)
@@ -162,7 +164,6 @@ exports.retrieve = (req, res) => {
       return res.status(404).send({ error, err });
     });
 };
-
 
 /**
  * Store a document to Firestore
@@ -212,6 +213,39 @@ exports.store = (req, res) => {
     console.error(error, err);
     return res.status(404).send({ error, err });
   });
+};
+
+/**
+ * Delete a document from Firestore, by ID
+ *
+ * Responds to any HTTP request.
+ *
+ * Must have the query string param for id=<document_id> set.
+ *
+ * success: returns the document content in JSON format & status=200
+ *    else: returns an error:<string> & status=404
+ *
+ * @param {!express:Request} req HTTP request context.
+ * @param {!express:Response} res HTTP response context.
+ */
+exports.delete = (req, res) => {
+  if (!(req.query && req.query.id)) {
+    return res.status(404).send({ error: 'No Id' });
+  }
+  const id = req.query.id.replace(/[^a-zA-Z0-9]/g, '').trim();
+  if (!(id && id.length)) {
+    return res.status(404).send({ error: 'Invalid Id' });
+  }
+  return firestore.collection('zerobin-gcp')
+    .doc(id)
+    .delete()
+    .then(() => {
+      return res.status(200).send({ status: 'ok' });
+    }).catch(err => {
+      const error = 'Unable to delete the document';
+      console.error(error, err);
+      return res.status(404).send({ error, err });
+    });
 };
 
 /**
