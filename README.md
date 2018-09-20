@@ -12,17 +12,24 @@ This is a functional clone of http://sebsauvage.net/paste/
 * store only encrypted data
 * stored data purged after TTL
 
+## Frontend / UI
+
+[web](./web) is an old-school minimalist single-page-app with as few dependencies as possible. (trying to reduce the security audit footprint)
+
+## Backend
+
+[gcp-functions](./gcp-functions) is a very simple serverless function integrating
+[firestore](https://cloud.google.com/firestore/)
+*(next gen [datastore](https://cloud.google.com/datastore/))*
+and exposing a minimal REST endpoint.
+
 ## Roadmap
 
-- [ ] build proof of concept client code, using window.crypto.subtle
-- [ ] build basic GCP Function code to store data
-- [ ] build basic GCP Function code to retrieve data
+- [x] build proof of concept client code, using window.crypto.subtle
+- [x] build basic GCP Function code to store/retrieve/manage data
 - [ ] flesh out client code to provide basic functionality
 - [ ] implement material design / make pretty
 - [ ] refactor to PWA / make it fast
- - https://mithril.js.org/
- - https://github.com/developit/preact-cli/
- - https://github.com/paulhoughton/preact-pwa
 
 
 

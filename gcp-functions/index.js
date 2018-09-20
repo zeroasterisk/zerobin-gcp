@@ -1,11 +1,10 @@
 'use strict';
 
-
 const Firestore = require('@google-cloud/firestore');
 
 const firestore = new Firestore({
   projectId: 'zerobin-gcp',
-  timestampsInSnapshots: true,
+  timestampsInSnapshots: true
   // NOTE don't hardcode your project credentials here
   // if you have to, export the following to your shell
   // GOOGLE_APPLICATION_CREDENTIALS=<path>
@@ -201,12 +200,12 @@ exports.store = (req, res) => {
     ttl,
     burn,
     debug,
-    ciphertext,
+    ciphertext
   }).then(doc => {
     // console.info('stored new doc id#', doc.id);
     return res.status(200).send({
       id: doc.id,
-      expires,
+      expires
     });
   }).catch(err => {
     const error = 'unable to store';
@@ -262,25 +261,25 @@ exports.delete = (req, res) => {
 exports.verify_data = (data) => {
   const keys = Object.keys(data);
   const missing_req_keys = REQ_KEYS.filter(k => {
-    return keys.indexOf(k) === -1
+    return keys.indexOf(k) === -1;
   });
   if (missing_req_keys.length) {
     return `Missing required fields: ${missing_req_keys.join(', ')}`;
   }
   const present_bad_keys = BAD_KEYS.filter(k => {
-    return keys.indexOf(k) !== -1
+    return keys.indexOf(k) !== -1;
   });
   if (present_bad_keys.length) {
     return `REJECTED fields: ${present_bad_keys.join(', ')}`;
   }
   const present_not_allowed_keys = keys.filter(k => {
-    return ALLOWED_KEYS.indexOf(k) === -1
+    return ALLOWED_KEYS.indexOf(k) === -1;
   });
   if (present_not_allowed_keys.length) {
     return `Not allowed fields: ${present_not_allowed_keys.join(', ')}`;
   }
   return null;
-}
+};
 
 /**
  * Trash Expires
@@ -311,7 +310,7 @@ const purgeExpire = (purgeType) => {
     console.log('about to trigger deleteQueryBatch');
     deleteQueryBatch(db, query, batchSize, resolve, reject);
   });
-}
+};
 
 /**
  * Recursivly delete "pages" of records
@@ -329,39 +328,39 @@ const purgeExpire = (purgeType) => {
 
 const deleteQueryBatch = (db, query, batchSize, resolve, reject) => {
   query.get()
-      .then((snapshot) => {
-        console.log('deleteQueryBatch');
-        // When there are no documents left, we are done
-        if (snapshot.size == 0) {
-          return 0;
-        }
+    .then((snapshot) => {
+      console.log('deleteQueryBatch');
+      // When there are no documents left, we are done
+      if (snapshot.size == 0) {
+        return 0;
+      }
 
-        // Delete documents in a batch
-        const batch = db.batch();
-        snapshot.docs.forEach((doc) => {
-          console.log('.');
-          batch.delete(doc.ref);
-        });
+      // Delete documents in a batch
+      const batch = db.batch();
+      snapshot.docs.forEach((doc) => {
+        console.log('.');
+        batch.delete(doc.ref);
+      });
 
-        console.log('!');
-        return batch.commit().then(() => {
-          console.log('committed');
-          return snapshot.size;
-        });
-      }).then((numDeleted) => {
-        console.log('numDeleted', numDeleted);
-        if (numDeleted === 0) {
-          resolve();
-          return;
-        }
+      console.log('!');
+      return batch.commit().then(() => {
+        console.log('committed');
+        return snapshot.size;
+      });
+    }).then((numDeleted) => {
+      console.log('numDeleted', numDeleted);
+      if (numDeleted === 0) {
+        resolve();
+        return;
+      }
 
-        // Recurse on the next process tick, to avoid
-        // exploding the stack.
-        console.log('recurse');
-        process.nextTick(() => {
-          console.log('nextTick');
-          deleteQueryBatch(db, query, batchSize, resolve, reject);
-        });
-      })
-      .catch(reject);
+      // Recurse on the next process tick, to avoid
+      // exploding the stack.
+      console.log('recurse');
+      process.nextTick(() => {
+        console.log('nextTick');
+        deleteQueryBatch(db, query, batchSize, resolve, reject);
+      });
+    })
+    .catch(reject);
 };

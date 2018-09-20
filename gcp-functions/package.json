@@ -6,6 +6,9 @@
     "semver": "^5.5.1"
   },
   "scripts": {
+    "deploy": "gcloud functions deploy main --trigger-http",
+    "stage": "functions deploy main --trigger-http",
+    "lint": "semistandard --fix",
     "test": "ava"
   },
   "devDependencies": {

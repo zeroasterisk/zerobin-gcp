@@ -1,6 +1,5 @@
 import Firestore from '@google-cloud/firestore';
 
-
 // ava test framework
 import test from 'ava';
 
@@ -28,25 +27,22 @@ const FIX_DATA = {
   debug: true,
   burn: false,
   expires: false,
-  created: false,
+  created: false
 };
-
-
 
 // this is really a bit of a "fixture setup" vs. a test
 test('setup our fixture data', async t => {
   const firestore = new Firestore({
     projectId: 'zerobin-gcp',
-    timestampsInSnapshots: true,
+    timestampsInSnapshots: true
   });
   firestore.collection('zerobin-gcp')
     .doc(FIX_ID_1)
     .set(FIX_DATA)
     .then(doc => {
       t.deepEqual(doc.id, FIX_ID_1);
-    })
+    });
 });
-
 
 test('healthcheck basic returns 200 no matter what', async t => {
   const res = await request(app)
@@ -125,8 +121,8 @@ test('retrieve fixture document with 200', async t => {
   t.is(res.status, 200);
   t.is(typeof res, 'object');
   t.is(typeof res.body, 'object');
-  delete res.body.created
-  delete res.body.expires
+  delete res.body.created;
+  delete res.body.expires;
   t.deepEqual(res.body, FIX_DATA);
 });
 
@@ -135,7 +131,7 @@ test('verify_data should return null if valid data passed in', t => {
     ciphertext: '000000000',
     debug: 1,
     burn: 1,
-    ttl: 2,
+    ttl: 2
   }), null);
 });
 test('verify_data should return an error if a bad field is passed', t => {
@@ -144,7 +140,7 @@ test('verify_data should return an error if a bad field is passed', t => {
     ciphertext: '000000000',
     debug: 1,
     burn: 1,
-    ttl: 2,
+    ttl: 2
   }), 'REJECTED fields: key');
 });
 test('verify_data should return an error if 2 bad fields are passed', t => {
@@ -152,19 +148,19 @@ test('verify_data should return an error if 2 bad fields are passed', t => {
     plaintext: 'x',
     key: 'x',
     ciphertext: '000000000',
-    ttl: 2,
+    ttl: 2
   }), 'REJECTED fields: plaintext, key');
 });
 test('verify_data should return an error if extra not-allowed fields are passed', t => {
   t.is(func.verify_data({
     junk: 'x',
     ciphertext: '000000000',
-    ttl: 2,
+    ttl: 2
   }), 'Not allowed fields: junk');
 });
 test('verify_data should return an error if ciphertext missing', t => {
   t.is(func.verify_data({
-    ttl: 2,
+    ttl: 2
   }), 'Missing required fields: ciphertext');
 });
 test('verify_data should return an error if ciphertext & ttl missing', t => {
@@ -177,7 +173,7 @@ test('store a valid fake document with 200, return just the id and expires date'
     .post('/store')
     .send({
       ciphertext: '000000000',
-      ttl: 2,
+      ttl: 2
     })
     .set('Accept', 'application/json')
     .catch(e => f.fail(e));
@@ -195,7 +191,7 @@ test('full cycle of store/write', async t => {
     .post('/store')
     .send({
       ciphertext: '000000000',
-      ttl: 2,
+      ttl: 2
     })
     .set('Accept', 'application/json')
     .catch(e => f.fail(e));
@@ -216,13 +212,12 @@ test('full cycle of store/write', async t => {
   t.is(res2.status, 200);
   t.is(typeof res2, 'object');
   t.is(typeof res2.body, 'object');
-  delete res2.body.created
-  delete res2.body.expires
+  delete res2.body.created;
+  delete res2.body.expires;
   t.deepEqual(res2.body, {
     burn: false,
     debug: false,
     ciphertext: '000000000',
-    ttl: 2,
+    ttl: 2
   });
 });
-
